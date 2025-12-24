@@ -5236,6 +5236,14 @@ function renderDone(){
   app.innerHTML = `
     <h2 class="center">完成！謝謝您</h2>
     <p class="center muted">您的填答已送出。</p>
+	<button
+ 	 class="primary"
+ 	 style="margin-top:24px;font-size:18px;padding:14px 22px;"
+ 	 onclick="handleRestartSurvey()"
+	>
+  	🔁 重新開始（填寫下一份問卷）
+	</button>
+
     <div class="divider"></div>
     <div class="noticeBox">
       <div>（研究用）參與編號：</div>
@@ -5266,6 +5274,26 @@ function escapeHtml(s){
   initIdentityAndConditions();
   render();
 })();
+// ===== Restart survey helpers =====
+function resetSurveyState() {
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("survey_")) {
+      keysToRemove.push(k);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+}
+
+function handleRestartSurvey() {
+  if (!confirm("確定要開始填寫下一份問卷嗎？\n目前資料已送出，不會遺失。")) {
+    return;
+  }
+  resetSurveyState();
+  location.reload();
+}
+
 </script>
 </body>
 </html>
