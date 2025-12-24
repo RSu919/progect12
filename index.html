@@ -1,12 +1,1276 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>銀髮族友善問卷（研究版）</title>
+  <style>
+    :root{
+      --bg:#f7f5ef;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --accent:#2563eb;
+      --danger:#b91c1c;
+      --ok:#16a34a;
+      --shadow: 0 8px 22px rgba(0,0,0,.08);
+      --radius:16px;
+      --pad:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.45;
+    }
+    .wrap{max-width:860px;margin:0 auto;padding:14px 14px 110px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:var(--pad);
+    }
+    h1{font-size:24px;margin:0 0 10px}
+    h2{font-size:22px;margin:0 0 10px}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .spacer{height:12px}
+    .divider{height:1px;background:var(--border);margin:14px 0}
+
+    /* Progress */
+    .progressWrap{display:none; gap:10px; align-items:center}
+    .progressBar{
+      flex:1;
+      height:12px;
+      background:#eef2ff;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid #dbeafe;
+    }
+    .progressFill{height:100%;width:0%;background:var(--accent)}
+    .progressText{font-size:16px; min-width:120px; text-align:right}
+
+    /* Big inputs */
+    label{font-size:18px}
+    select, input[type="text"]{
+      font-size:18px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      width:100%;
+      max-width:420px;
+    }
+
+    .bigOption{
+      width:100%;
+      text-align:left;
+      font-size:20px;
+      padding:14px 14px;
+      border-radius:14px;
+      border:2px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      min-height:52px; /* >=44px */
+    }
+    .bigOption + .bigOption{margin-top:10px}
+    .bigOption[aria-pressed="true"]{
+      border-color:var(--accent);
+      outline:3px solid rgba(37,99,235,.15);
+      background:#eff6ff;
+    }
+
+    .err{
+      display:none;
+      color:var(--danger);
+      font-size:18px;
+      padding:10px 12px;
+      border:1px solid #fecaca;
+      background:#fff1f2;
+      border-radius:12px;
+      margin-top:10px;
+    }
+
+    /* Bottom nav */
+    .bottomNav{
+      position:fixed;
+      left:0; right:0; bottom:0;
+      background:rgba(247,245,239,.96);
+      border-top:1px solid var(--border);
+      padding:10px 14px;
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      z-index:999;
+      backdrop-filter: blur(6px);
+    }
+    .btn{
+      font-size:20px;
+      padding:14px 18px;
+      border-radius:14px;
+      border:2px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      min-height:52px;
+      min-width:140px;
+    }
+    .btnPrimary{background:var(--accent); border-color:var(--accent); color:#fff}
+    .btnDanger{background:var(--danger); border-color:var(--danger); color:#fff}
+    .btn:disabled{opacity:.5; cursor:not-allowed}
+    .tag{
+      display:inline-block;
+      font-size:14px;
+      padding:4px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      color:var(--muted);
+      background:#fff;
+    }
+    .pillRow{display:flex;gap:8px;flex-wrap:wrap}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .small{font-size:14px}
+    .noticeBox{
+      border:1px dashed #c7d2fe;
+      background:#eef2ff;
+      padding:12px 14px;
+      border-radius:14px;
+    }
+    .center{text-align:center}
+  </style>
 </head>
 <body>
-    <h1>合作案啟動</h1>
+  <div class="wrap">
+    <div class="card" id="app"></div>
+  </div>
 
+  <div class="bottomNav" id="bottomNav" style="display:none;">
+    <button class="btn" id="btnBack">上一題</button>
+    <button class="btn btnPrimary" id="btnNext">下一題</button>
+  </div>
+
+<script>
+/** =========================
+ * 0) 管理者設定
+ * ========================= */
+const CONFIG = {
+  // 你的 GAS /exec URL（部署後貼這裡）
+  WEBAPP_URL: "PASTE_YOUR_GAS_EXEC_URL_HERE",
+  // 與 GAS 端一致的 secret
+  SECRET: "CHANGE_ME_SECRET",
+  // idle 判定（秒）
+  IDLE_THRESHOLD_SEC: 30,
+  // 是否在開發時顯示 debug
+  DEBUG: false,
+};
+
+/** =========================
+ * 1) 題庫（Placeholder）
+ *  - 你之後把這段換成你完整 80–90 題即可
+ *  - 建議 question_id: APS_01...、PSAS_01...、DBAS_01...
+ * ========================= */
+const LIKERT5 = [
+  { value: 1, label: "非常不同意" },
+  { value: 2, label: "不太同意" },
+  { value: 3, label: "普通" },
+  { value: 4, label: "同意" },
+  { value: 5, label: "非常同意" },
+];
+
+const QUESTION_BANK = [
+  {
+    category_id: 1,
+    category_title: "第一部分（示範）",
+    est_minutes: 2,
+    questions: [
+      { question_id: "APS_01", text: "（示範）我很容易因為小事而緊張。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "APS" },
+      { question_id: "APS_02", text: "（示範）我常覺得身體很難放鬆。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "APS" },
+      { question_id: "APS_03", text: "（示範）我在睡前會想很多事情。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "APS" },
+    ]
+  },
+  {
+    category_id: 2,
+    category_title: "第二部分（示範）",
+    est_minutes: 2,
+    questions: [
+      { question_id: "ISI_01", text: "（示範）入睡困難的程度。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "ISI" },
+      { question_id: "ISI_02", text: "（示範）夜間醒來的困擾程度。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "ISI" },
+      { question_id: "ISI_03", text: "（示範）早醒的困擾程度。", scale_min: 1, scale_max: 5, options: LIKERT5, instrument: "ISI" },
+    ]
+  },
+];
+
+/** 你真正的問卷是 5 類、80–90 題。
+ *  做法：把 QUESTION_BANK 改成 5 個 category，每個 category 有你的 questions[]。
+ */
+
+/** =========================
+ * 2) 隱私告知 A/B 文案（可再調整）
+ * ========================= */
+const PRIVACY_NOTICE = {
+  A_long: `
+    <h2>隱私與資料使用告知（版本 A）</h2>
+    <p>本研究將蒐集您在本問卷中的作答資料，以及您在填答過程中的操作行為（例如：每題作答時間、按「上一題/下一題」、停頓時間等）。資料將用於學術研究分析，並採匿名方式處理，不會公開可識別個人身分之資訊。</p>
+    <p>資料僅供研究團隊使用，保存於受保護的雲端試算表，並於研究結束後依研究規範保存與刪除。</p>
+    <p class="muted">提醒：您可隨時停止填答；停止不會造成任何不利影響。</p>
+  `,
+  B_usable: `
+    <h2>隱私與資料使用告知（版本 B：重點版）</h2>
+    <div class="noticeBox">
+      <ul>
+        <li>我們會收集：<b>問卷答案</b>與<b>填答過程</b>（例如每題花多久、是否按上一題、停頓多久）。</li>
+        <li>用途：只用於<b>學術研究分析</b>（UI/UX 與隱私告知可用性）。</li>
+        <li>匿名：不會公開能辨識您身分的資訊。</li>
+        <li>您可以隨時停止填答，不會有任何不利影響。</li>
+      </ul>
+    </div>
+  `
+};
+
+/** =========================
+ * 3) 狀態 & 儲存鍵
+ * ========================= */
+const LS = {
+  PID: "survey_pid",
+  UI: "survey_ui_condition",
+  PV: "survey_privacy_version",
+  START: "survey_start_ts",
+  STEP: "survey_step",
+  CUR_INDEX: "survey_cur_index",
+  ANSWERS: "survey_answers",
+  VIEW_TS: "survey_view_ts_map",
+  CHANGES: "survey_changes_map",
+  RESUME: "survey_resume_count",
+  EVENTQ: "survey_event_queue",
+  SESSION_SENT: "survey_session_init_sent",
+  CONSENT_TS0: "survey_consent_ts0",
+  CONSENT_MAX_SCROLL: "survey_consent_max_scroll",
+  BG: "survey_background",
+};
+
+const UI_CONDITIONS = [
+  "ONEQ_PROGRESS_ON",
+  "ONEQ_PROGRESS_OFF",
+  "TWOQ_PROGRESS_ON",
+  "TWOQ_PROGRESS_OFF"
+];
+
+function nowISO(){
+  return new Date().toISOString();
+}
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function getDeviceType(){
+  const w = window.innerWidth;
+  if (w <= 640) return "mobile";
+  if (w <= 1024) return "tablet";
+  return "desktop";
+}
+function debug(...args){ if (CONFIG.DEBUG) console.log(...args); }
+
+/** =========================
+ * 4) 展開題庫為線性題序（q_index）
+ * ========================= */
+function flattenQuestions(bank){
+  const flat = [];
+  let idx = 0;
+  for (const cat of bank){
+    for (const q of cat.questions){
+      idx += 1;
+      flat.push({
+        ...q,
+        category_id: cat.category_id,
+        category_title: cat.category_title,
+        est_minutes: cat.est_minutes ?? null,
+        q_index: idx
+      });
+    }
+  }
+  return flat;
+}
+const FLAT = flattenQuestions(QUESTION_BANK);
+const TOTAL_Q = FLAT.length;
+
+function getPaging(ui_condition_id){
+  return ui_condition_id.startsWith("TWOQ") ? 2 : 1;
+}
+function isProgressOn(ui_condition_id){
+  return ui_condition_id.endsWith("ON");
+}
+
+/** =========================
+ * 5) 初始化 participant / 分派條件
+ * ========================= */
+function initIdentityAndConditions(){
+  let pid = localStorage.getItem(LS.PID);
+  if (!pid){
+    pid = crypto.randomUUID();
+    localStorage.setItem(LS.PID, pid);
+  }
+
+  let ui = localStorage.getItem(LS.UI);
+  if (!ui){
+    ui = randomPick(UI_CONDITIONS);
+    localStorage.setItem(LS.UI, ui);
+  }
+
+  let pv = localStorage.getItem(LS.PV);
+  if (!pv){
+    pv = randomPick(["A_long", "B_usable"]);
+    localStorage.setItem(LS.PV, pv);
+  }
+
+  if (!localStorage.getItem(LS.START)){
+    localStorage.setItem(LS.START, nowISO());
+  }
+
+  // resume count
+  const prev = parseInt(localStorage.getItem(LS.RESUME) || "0", 10);
+  localStorage.setItem(LS.RESUME, String(prev + 1));
+
+  return { pid, ui, pv };
+}
+
+/** =========================
+ * 6) 事件記錄 / idle 偵測
+ * ========================= */
+let idleTimer = null;
+let inIdle = false;
+let lastInteractionTs = Date.now();
+
+function pushEvent(event_type, payload={}){
+  const pid = localStorage.getItem(LS.PID);
+  const qIndex = getCurrentQIndex();
+  const q = FLAT[qIndex] || null;
+
+  const evt = {
+    participant_id: pid,
+    ts: nowISO(),
+    event_type,
+    category_id: q ? q.category_id : null,
+    question_id: q ? q.question_id : null,
+    q_index: q ? q.q_index : null,
+    page_no: getCurrentPageNo(),
+    meta_json: JSON.stringify(payload || {})
+  };
+
+  const queue = JSON.parse(localStorage.getItem(LS.EVENTQ) || "[]");
+  queue.push(evt);
+  localStorage.setItem(LS.EVENTQ, JSON.stringify(queue));
+  debug("event", evt);
+}
+
+function markInteraction(){
+  lastInteractionTs = Date.now();
+  if (inIdle){
+    inIdle = false;
+    pushEvent("idle_end", {});
+  }
+  scheduleIdleCheck();
+}
+
+function scheduleIdleCheck(){
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(()=>{
+    const diffSec = (Date.now() - lastInteractionTs)/1000;
+    if (!inIdle && diffSec >= CONFIG.IDLE_THRESHOLD_SEC){
+      inIdle = true;
+      pushEvent("idle_start", { threshold_sec: CONFIG.IDLE_THRESHOLD_SEC });
+    }
+    scheduleIdleCheck();
+  }, 1000);
+}
+
+["click","touchstart","keydown","scroll"].forEach(ev=>{
+  window.addEventListener(ev, ()=>markInteraction(), { passive:true });
+});
+
+/** =========================
+ * 7) 資料模型：答案 / view_ts / changes
+ * ========================= */
+function getAnswers(){
+  return JSON.parse(localStorage.getItem(LS.ANSWERS) || "{}"); // {question_id: value}
+}
+function setAnswer(question_id, value){
+  const answers = getAnswers();
+  const prev = answers[question_id];
+  answers[question_id] = value;
+  localStorage.setItem(LS.ANSWERS, JSON.stringify(answers));
+
+  // changes map
+  const changes = JSON.parse(localStorage.getItem(LS.CHANGES) || "{}"); // {question_id: {num_changes, changed_answer}}
+  if (!changes[question_id]){
+    changes[question_id] = { num_changes: 0, changed_answer: 0 };
+  }
+  if (prev !== undefined && prev !== value){
+    changes[question_id].num_changes += 1;
+    changes[question_id].changed_answer = 1;
+  }
+  localStorage.setItem(LS.CHANGES, JSON.stringify(changes));
+
+  pushEvent("answer_select", { question_id, value });
+
+  // 將 response 寫入佇列（可立即上傳或批次上傳）
+  enqueueResponseRow(question_id, value);
+}
+
+function getViewTsMap(){
+  return JSON.parse(localStorage.getItem(LS.VIEW_TS) || "{}"); // {question_id: view_ts_iso}
+}
+function setViewed(question_id){
+  const map = getViewTsMap();
+  if (!map[question_id]){
+    map[question_id] = nowISO();
+    localStorage.setItem(LS.VIEW_TS, JSON.stringify(map));
+  }
+}
+
+/** response rows queue (簡化：同樣放 events queue 之外，用 localStorage 保存) */
+const LS_RESPQ = "survey_response_queue";
+
+function enqueueResponseRow(question_id, answer_value){
+  const pid = localStorage.getItem(LS.PID);
+  const ui = localStorage.getItem(LS.UI);
+  const pv = localStorage.getItem(LS.PV);
+
+  const q = FLAT.find(x=>x.question_id===question_id);
+  if (!q) return;
+
+  const viewMap = getViewTsMap();
+  const view_ts = viewMap[question_id] || nowISO();
+  const answer_ts = nowISO();
+  const time_to_answer_ms = Math.max(0, Date.parse(answer_ts) - Date.parse(view_ts));
+
+  const changes = JSON.parse(localStorage.getItem(LS.CHANGES) || "{}");
+  const ch = changes[question_id] || { num_changes: 0, changed_answer: 0 };
+
+  const row = {
+    participant_id: pid,
+    ui_condition_id: ui,
+    privacy_notice_version: pv,
+    instrument: q.instrument || null,
+    category_id: q.category_id,
+    question_id: q.question_id,
+    q_index: q.q_index,
+    page_no: getCurrentPageNo(),
+    answer_value: Number(answer_value),
+    scale_min: q.scale_min ?? null,
+    scale_max: q.scale_max ?? null,
+    option_type: "LIKERT",
+    view_ts,
+    answer_ts,
+    time_to_answer_ms,
+    changed_answer: ch.changed_answer,
+    num_changes: ch.num_changes,
+  };
+
+  const queue = JSON.parse(localStorage.getItem(LS_RESPQ) || "[]");
+  // 覆蓋同 question_id 的最後版本（避免同題狂寫很多列）
+  const idx = queue.findIndex(r => r.participant_id===pid && r.question_id===question_id);
+  if (idx >= 0) queue[idx] = row; else queue.push(row);
+  localStorage.setItem(LS_RESPQ, JSON.stringify(queue));
+}
+
+/** =========================
+ * 8) GAS 上傳（sessions / responses / events）
+ * ========================= */
+async function postToGAS(payload){
+  if (!CONFIG.WEBAPP_URL || CONFIG.WEBAPP_URL.includes("PASTE_YOUR")){
+    debug("GAS URL not set");
+    return { ok:false, error:"WEBAPP_URL not set" };
+  }
+  payload.secret = CONFIG.SECRET;
+  try{
+    const res = await fetch(CONFIG.WEBAPP_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json().catch(()=>({ ok:false, error:"Invalid JSON response" }));
+    return json;
+  }catch(e){
+    return { ok:false, error:String(e) };
+  }
+}
+
+async function flushQueues(){
+  const pid = localStorage.getItem(LS.PID);
+
+  // events
+  const events = JSON.parse(localStorage.getItem(LS.EVENTQ) || "[]");
+  // responses
+  const responses = JSON.parse(localStorage.getItem(LS_RESPQ) || "[]");
+
+  if (events.length===0 && responses.length===0) return;
+
+  const payload = {
+    type: "batch",
+    participant_id: pid,
+    events,
+    responses,
+  };
+
+  const r = await postToGAS(payload);
+  if (r && r.ok){
+    localStorage.setItem(LS.EVENTQ, "[]");
+    localStorage.setItem(LS_RESPQ, "[]");
+  }else{
+    // 保留 queue，稍後再送
+    debug("flush failed", r);
+  }
+}
+
+// 每 10 秒嘗試 flush（可調）
+setInterval(()=>flushQueues(), 10000);
+
+/** =========================
+ * 9) Step 狀態機（頁面流程）
+ * ========================= */
+const STEPS = {
+  LANDING: "LANDING",
+  CONSENT: "CONSENT",
+  BACKGROUND: "BACKGROUND",
+  SURVEY: "SURVEY",
+  UX: "UX",
+  DONE: "DONE",
+  DECLINED: "DECLINED",
+};
+
+function getStep(){
+  return localStorage.getItem(LS.STEP) || STEPS.LANDING;
+}
+function setStep(step){
+  localStorage.setItem(LS.STEP, step);
+}
+
+/** 題目游標（0-based in FLAT） */
+function getCurrentQIndex(){
+  return parseInt(localStorage.getItem(LS.CUR_INDEX) || "0", 10);
+}
+function setCurrentQIndex(i){
+  localStorage.setItem(LS.CUR_INDEX, String(clamp(i, 0, Math.max(0, TOTAL_Q-1))));
+}
+
+/** page_no：ONEQ 每題一頁，TWOQ 每兩題一頁 */
+function getCurrentPageNo(){
+  const ui = localStorage.getItem(LS.UI) || "ONEQ_PROGRESS_ON";
+  const paging = getPaging(ui);
+  const idx = getCurrentQIndex(); // 0-based
+  return Math.floor(idx / paging) + 1;
+}
+
+/** =========================
+ * 10) UI Render
+ * ========================= */
+const app = document.getElementById("app");
+const bottomNav = document.getElementById("bottomNav");
+const btnBack = document.getElementById("btnBack");
+const btnNext = document.getElementById("btnNext");
+
+btnBack.addEventListener("click", ()=>{
+  pushEvent("back_click", {});
+  goPrev();
+});
+btnNext.addEventListener("click", ()=>{
+  pushEvent("next_click", {});
+  goNext();
+});
+
+function render(){
+  const step = getStep();
+  if (step === STEPS.LANDING) return renderLanding();
+  if (step === STEPS.CONSENT) return renderConsent();
+  if (step === STEPS.BACKGROUND) return renderBackground();
+  if (step === STEPS.SURVEY) return renderSurvey();
+  if (step === STEPS.UX) return renderUX();
+  if (step === STEPS.DONE) return renderDone();
+  if (step === STEPS.DECLINED) return renderDeclined();
+}
+
+function renderLanding(){
+  bottomNav.style.display = "none";
+  const { pid, ui, pv } = initIdentityAndConditions();
+  scheduleIdleCheck();
+
+  app.innerHTML = `
+    <h1>問卷填答</h1>
+    <p class="muted">本問卷適用銀髮族填答。您可隨時停止，不會造成任何不利影響。</p>
+    <div class="pillRow">
+      <span class="tag">裝置：${getDeviceType()}</span>
+      <span class="tag">螢幕：${window.innerWidth}×${window.innerHeight}</span>
+      <span class="tag">研究版</span>
+    </div>
+    <div class="divider"></div>
+    <p>開始前會先顯示「隱私與資料使用告知」。</p>
+    <button class="btn btnPrimary" id="startBtn">開始填答</button>
+    <div class="spacer"></div>
+    <details class="small">
+      <summary>（管理者資訊/除錯用）</summary>
+      <div class="mono small muted">
+        participant_id: ${pid}<br/>
+        ui_condition_id: ${ui}<br/>
+        privacy_notice_version: ${pv}<br/>
+        total_questions: ${TOTAL_Q}
+      </div>
+    </details>
+  `;
+  document.getElementById("startBtn").onclick = async ()=>{
+    setStep(STEPS.CONSENT);
+    localStorage.setItem(LS.CONSENT_TS0, String(Date.now()));
+    localStorage.setItem(LS.CONSENT_MAX_SCROLL, "0");
+    pushEvent("page_view", { page:"consent" });
+    await sessionInitIfNeeded();
+    render();
+  };
+}
+
+/** Sessions init：把 session row 的基本資訊先寫入（ok 失敗也沒關係，後面 submit 會再送一次） */
+async function sessionInitIfNeeded(){
+  if (localStorage.getItem(LS.SESSION_SENT)==="1") return;
+
+  const pid = localStorage.getItem(LS.PID);
+  const ui = localStorage.getItem(LS.UI);
+  const pv = localStorage.getItem(LS.PV);
+  const start_ts = localStorage.getItem(LS.START);
+  const resume_count = parseInt(localStorage.getItem(LS.RESUME) || "1", 10);
+
+  const payload = {
+    type: "session_init",
+    participant_id: pid,
+    session: {
+      participant_id: pid,
+      start_ts,
+      end_ts: null,
+      total_duration_sec: null,
+      completed: 0,
+      dropout_q_index: null,
+      dropout_category_id: null,
+      resume_count,
+      ui_condition_id: ui,
+      factor_paging: ui.startsWith("TWOQ") ? "TWOQ" : "ONEQ",
+      factor_progress: ui.endsWith("ON") ? "ON" : "OFF",
+      privacy_notice_version: pv,
+      consent_given: null,
+      consent_dwell_time_sec: null,
+      consent_scroll_pct: null,
+      comprehension_score: null,
+      trust_score: null,
+      age_group: null,
+      device_type: getDeviceType(),
+      screen_width: window.innerWidth,
+      screen_height: window.innerHeight,
+      ux1: null, ux2: null, ux3: null, ux4: null, ux5: null,
+    }
+  };
+
+  const r = await postToGAS(payload);
+  if (r && r.ok) localStorage.setItem(LS.SESSION_SENT, "1");
+}
+
+/** consent scroll % */
+function updateConsentScrollPct(){
+  const maxScroll = parseFloat(localStorage.getItem(LS.CONSENT_MAX_SCROLL) || "0");
+  const doc = document.documentElement;
+  const scrollTop = doc.scrollTop || document.body.scrollTop;
+  const scrollHeight = doc.scrollHeight - doc.clientHeight;
+  const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 100;
+  const newMax = Math.max(maxScroll, pct);
+  localStorage.setItem(LS.CONSENT_MAX_SCROLL, String(newMax));
+}
+
+window.addEventListener("scroll", ()=>{
+  if (getStep()===STEPS.CONSENT) updateConsentScrollPct();
+}, { passive:true });
+
+function renderConsent(){
+  bottomNav.style.display = "none";
+  const pv = localStorage.getItem(LS.PV) || "B_usable";
+
+  app.innerHTML = `
+    ${PRIVACY_NOTICE[pv]}
+    <div class="divider"></div>
+
+    <h2>簡短確認（理解檢核）</h2>
+    <p class="muted">請選擇最符合您的答案（1–2 題）。</p>
+
+    <div class="spacer"></div>
+    <div>
+      <div style="font-size:20px;margin-bottom:8px;">(C1) 本網站會收集「問卷答案」與「填答過程（例如每題花多久）」嗎？</div>
+      <div id="c1"></div>
+    </div>
+
+    <div class="spacer"></div>
+    <div>
+      <div style="font-size:20px;margin-bottom:8px;">(C2) 我信任這個網站會妥善處理我的資料。</div>
+      <div id="trust"></div>
+    </div>
+
+    <div class="err" id="consentErr">請先完成上面的兩題，才能繼續。</div>
+
+    <div class="divider"></div>
+    <div class="row">
+      <button class="btn btnDanger" id="declineBtn">我不同意</button>
+      <button class="btn btnPrimary" id="agreeBtn">我同意</button>
+    </div>
+  `;
+
+  // C1 yes/no
+  renderBinaryOptions("c1", "consent_c1", [
+    { value: 1, label: "是" },
+    { value: 0, label: "否" },
+  ]);
+
+  // trust 1..5
+  renderLikertOptions("trust", "trust_score", LIKERT5);
+
+  document.getElementById("declineBtn").onclick = async ()=>{
+    const dwellSec = calcConsentDwellSec();
+    const scrollPct = parseFloat(localStorage.getItem(LS.CONSENT_MAX_SCROLL)||"0");
+    pushEvent("submit", { consent_given: 0 });
+
+    await postToGAS({
+      type:"consent",
+      participant_id: localStorage.getItem(LS.PID),
+      consent: {
+        consent_given: 0,
+        consent_dwell_time_sec: dwellSec,
+        consent_scroll_pct: scrollPct,
+        comprehension_score: null,
+        trust_score: null,
+      }
+    });
+
+    setStep(STEPS.DECLINED);
+    render();
+  };
+
+  document.getElementById("agreeBtn").onclick = async ()=>{
+    const c1 = getLocalTemp("consent_c1");
+    const trust = getLocalTemp("trust_score");
+    if (c1 === null || trust === null){
+      showErr("consentErr");
+      return;
+    }
+    hideErr("consentErr");
+
+    // comprehension_score：C1 正確答案為「是」
+    const comprehension_score = (Number(c1) === 1) ? 1 : 0;
+
+    const dwellSec = calcConsentDwellSec();
+    const scrollPct = parseFloat(localStorage.getItem(LS.CONSENT_MAX_SCROLL)||"0");
+
+    pushEvent("submit", { consent_given: 1, comprehension_score, trust_score:Number(trust) });
+
+    // 將 consent 結果存到 background/session
+    const bg = JSON.parse(localStorage.getItem(LS.BG) || "{}");
+    bg.comprehension_score = comprehension_score;
+    bg.trust_score = Number(trust);
+    localStorage.setItem(LS.BG, JSON.stringify(bg));
+
+    await postToGAS({
+      type:"consent",
+      participant_id: localStorage.getItem(LS.PID),
+      consent: {
+        consent_given: 1,
+        consent_dwell_time_sec: dwellSec,
+        consent_scroll_pct: scrollPct,
+        comprehension_score,
+        trust_score: Number(trust),
+      }
+    });
+
+    setStep(STEPS.BACKGROUND);
+    render();
+  };
+}
+
+function calcConsentDwellSec(){
+  const t0 = parseInt(localStorage.getItem(LS.CONSENT_TS0) || String(Date.now()), 10);
+  return Math.max(0, Math.round((Date.now() - t0)/1000));
+}
+
+function renderBackground(){
+  bottomNav.style.display = "none";
+
+  const bg = JSON.parse(localStorage.getItem(LS.BG) || "{}");
+  const age = bg.age_group ?? "";
+  const sex = bg.sex ?? "";
+
+  app.innerHTML = `
+    <h2>基本資料</h2>
+    <p class="muted">（必填）請填寫以下資料。</p>
+
+    <div class="spacer"></div>
+    <div>
+      <label>性別（必填）</label><br/>
+      <select id="sex">
+        <option value="">請選擇</option>
+        <option value="male">男</option>
+        <option value="female">女</option>
+        <option value="other">其他/不方便回答</option>
+      </select>
+    </div>
+
+    <div class="spacer"></div>
+    <div>
+      <label>年齡區間（必填）</label><br/>
+      <select id="age">
+        <option value="">請選擇</option>
+        <option value="60-64">60–64</option>
+        <option value="65-69">65–69</option>
+        <option value="70-74">70–74</option>
+        <option value="75+">75 以上</option>
+      </select>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="noticeBox">
+      <div class="muted">裝置資訊（系統自動）：${getDeviceType()} / ${window.innerWidth}×${window.innerHeight}</div>
+    </div>
+
+    <div class="err" id="bgErr">請完成必填欄位，才能繼續。</div>
+
+    <div class="divider"></div>
+    <button class="btn btnPrimary" id="bgNext">開始填問卷</button>
+  `;
+
+  const sexEl = document.getElementById("sex");
+  const ageEl = document.getElementById("age");
+  sexEl.value = sex;
+  ageEl.value = age;
+
+  document.getElementById("bgNext").onclick = ()=>{
+    if (!sexEl.value || !ageEl.value){
+      showErr("bgErr"); return;
+    }
+    hideErr("bgErr");
+
+    const bg2 = JSON.parse(localStorage.getItem(LS.BG) || "{}");
+    bg2.sex = sexEl.value;
+    bg2.age_group = ageEl.value;
+    localStorage.setItem(LS.BG, JSON.stringify(bg2));
+
+    // 問卷游標回到 0（若已在填則不要重設）
+    if (!localStorage.getItem(LS.CUR_INDEX)) setCurrentQIndex(0);
+
+    setStep(STEPS.SURVEY);
+    pushEvent("page_view", { page:"survey" });
+    render();
+  };
+}
+
+function renderSurvey(){
+  // Bottom nav show
+  bottomNav.style.display = "flex";
+
+  const pid = localStorage.getItem(LS.PID);
+  const ui = localStorage.getItem(LS.UI) || "ONEQ_PROGRESS_ON";
+  const pv = localStorage.getItem(LS.PV) || "B_usable";
+  const paging = getPaging(ui);
+  const idx = getCurrentQIndex(); // 0-based
+  const pageStart = Math.floor(idx / paging) * paging;
+  const pageEnd = Math.min(pageStart + paging, TOTAL_Q);
+  const pageQs = FLAT.slice(pageStart, pageEnd);
+
+  // mark view for all questions on this page
+  pageQs.forEach(q => setViewed(q.question_id));
+
+  // progress
+  const showProg = isProgressOn(ui);
+  const currentQNumber = pageStart + 1; // 1-based
+  const pct = TOTAL_Q > 0 ? Math.round((currentQNumber / TOTAL_Q) * 100) : 0;
+
+  // category header for first question on page
+  const catTitle = pageQs[0]?.category_title || "";
+  const catId = pageQs[0]?.category_id || null;
+
+  const answers = getAnswers();
+
+  app.innerHTML = `
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="pillRow">
+        <span class="tag">介面條件：<span class="mono">${ui}</span></span>
+        <span class="tag">隱私版本：<span class="mono">${pv}</span></span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="progressWrap" id="progWrap" style="display:${showProg ? "flex":"none"}">
+      <div class="progressBar"><div class="progressFill" id="progFill"></div></div>
+      <div class="progressText" id="progText"></div>
+    </div>
+
+    <div class="spacer"></div>
+    <h2>${catTitle}</h2>
+    <div class="muted">第 ${pageStart+1} – ${pageEnd} 題 / 共 ${TOTAL_Q} 題</div>
+
+    <div class="divider"></div>
+
+    <div id="questionArea"></div>
+
+    <div class="err" id="qErr">請先選擇一個答案才能繼續。</div>
+  `;
+
+  if (showProg){
+    document.getElementById("progFill").style.width = pct + "%";
+    document.getElementById("progText").textContent = `第 ${currentQNumber}/${TOTAL_Q}（${pct}%）`;
+  }
+
+  // render questions
+  const qa = document.getElementById("questionArea");
+  qa.innerHTML = "";
+  pageQs.forEach((q, i)=>{
+    const selected = answers[q.question_id];
+    const block = document.createElement("div");
+    block.style.marginBottom = "14px";
+    block.innerHTML = `
+      <div style="font-size:20px;margin:0 0 10px;">
+        (${q.q_index}) ${escapeHtml(q.text)}
+      </div>
+      <div id="opt_${q.question_id}"></div>
+    `;
+    qa.appendChild(block);
+    renderLikertOptions(`opt_${q.question_id}`, q.question_id, q.options, selected);
+  });
+
+  // nav button states
+  btnBack.disabled = (pageStart === 0);
+  btnNext.textContent = (pageEnd >= TOTAL_Q) ? "完成並進入下一步" : "下一題";
+
+  pushEvent("page_view", { page:"survey", category_id: catId, page_no: getCurrentPageNo() });
+
+  // update next/back handlers use current page boundaries
+  function validatePageAnswered(){
+    for (const q of pageQs){
+      const a = getAnswers()[q.question_id];
+      if (a === undefined || a === null || a === "") return false;
+    }
+    return true;
+  }
+
+  window.__validatePageAnswered = validatePageAnswered;
+}
+
+function goPrev(){
+  const ui = localStorage.getItem(LS.UI) || "ONEQ_PROGRESS_ON";
+  const paging = getPaging(ui);
+  const idx = getCurrentQIndex();
+  const pageStart = Math.floor(idx / paging) * paging;
+  const prevPageStart = Math.max(0, pageStart - paging);
+  setCurrentQIndex(prevPageStart);
+  hideErr("qErr");
+  render();
+}
+
+function goNext(){
+  const ui = localStorage.getItem(LS.UI) || "ONEQ_PROGRESS_ON";
+  const paging = getPaging(ui);
+  const idx = getCurrentQIndex();
+  const pageStart = Math.floor(idx / paging) * paging;
+  const pageEnd = Math.min(pageStart + paging, TOTAL_Q);
+
+  // validate
+  if (typeof window.__validatePageAnswered === "function"){
+    if (!window.__validatePageAnswered()){
+      showErr("qErr");
+      return;
+    }
+  }
+
+  hideErr("qErr");
+
+  if (pageEnd >= TOTAL_Q){
+    // survey finished -> UX page
+    setStep(STEPS.UX);
+    bottomNav.style.display = "none";
+    render();
+    return;
+  }
+
+  setCurrentQIndex(pageEnd);
+  render();
+}
+
+/** =========================
+ * 10.1 Likert / Binary option render helpers
+ * ========================= */
+function renderLikertOptions(containerId, question_id, options, presetValue=null){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const selected = (presetValue !== null && presetValue !== undefined) ? Number(presetValue) : Number(getAnswers()[question_id]);
+
+  el.innerHTML = "";
+  options.forEach(opt=>{
+    const btn = document.createElement("button");
+    btn.className = "bigOption";
+    btn.type = "button";
+    btn.setAttribute("aria-pressed", String(selected === Number(opt.value)));
+    btn.textContent = `${opt.label}`;
+    btn.onclick = ()=>{
+      // unselect siblings
+      [...el.querySelectorAll("button")].forEach(b=>b.setAttribute("aria-pressed","false"));
+      btn.setAttribute("aria-pressed","true");
+      setAnswer(question_id, Number(opt.value));
+      hideErr("qErr");
+    };
+    el.appendChild(btn);
+  });
+}
+
+function renderBinaryOptions(containerId, key, options){
+  const el = document.getElementById(containerId);
+  const selected = getLocalTemp(key);
+  el.innerHTML = "";
+  options.forEach(opt=>{
+    const btn = document.createElement("button");
+    btn.className = "bigOption";
+    btn.type = "button";
+    btn.setAttribute("aria-pressed", String(selected !== null && Number(selected)===Number(opt.value)));
+    btn.textContent = opt.label;
+    btn.onclick = ()=>{
+      [...el.querySelectorAll("button")].forEach(b=>b.setAttribute("aria-pressed","false"));
+      btn.setAttribute("aria-pressed","true");
+      setLocalTemp(key, Number(opt.value));
+    };
+    el.appendChild(btn);
+  });
+}
+
+function setLocalTemp(key, value){
+  const tmp = JSON.parse(localStorage.getItem("survey_tmp") || "{}");
+  tmp[key] = value;
+  localStorage.setItem("survey_tmp", JSON.stringify(tmp));
+}
+function getLocalTemp(key){
+  const tmp = JSON.parse(localStorage.getItem("survey_tmp") || "{}");
+  return (tmp[key] === undefined) ? null : tmp[key];
+}
+
+/** =========================
+ * 11) UX 最後頁
+ * ========================= */
+function renderUX(){
+  bottomNav.style.display = "none";
+
+  app.innerHTML = `
+    <h2>最後幾題（使用感受）</h2>
+    <p class="muted">請依您的感受作答（1–5）。</p>
+    <div class="divider"></div>
+
+    <div id="uxArea"></div>
+    <div class="err" id="uxErr">請完成所有題目才能送出。</div>
+
+    <div class="divider"></div>
+    <button class="btn btnPrimary" id="submitBtn">送出</button>
+  `;
+
+  const UX_QS = [
+    { id:"ux1", text:"(UX1) 我覺得這個問卷很容易操作。" },
+    { id:"ux2", text:"(UX2) 題目與選項很清楚、容易理解。" },
+    { id:"ux3", text:"(UX3) 我覺得填答的負擔不大。" },
+    { id:"ux4", text:"(UX4) 填答過程讓我感到安心（不太焦慮）。" },
+    { id:"ux5", text:"(UX5) 我覺得填答過程不會太疲勞。" },
+  ];
+
+  const area = document.getElementById("uxArea");
+  UX_QS.forEach(q=>{
+    const block = document.createElement("div");
+    block.style.marginBottom="14px";
+    block.innerHTML = `
+      <div style="font-size:20px;margin:0 0 10px;">${escapeHtml(q.text)}</div>
+      <div id="${q.id}"></div>
+    `;
+    area.appendChild(block);
+    renderLikertOptions(q.id, q.id, LIKERT5);
+  });
+
+  document.getElementById("submitBtn").onclick = async ()=>{
+    // validate UX answers exist
+    const answers = getAnswers();
+    for (const q of UX_QS){
+      if (answers[q.id] === undefined) { showErr("uxErr"); return; }
+    }
+    hideErr("uxErr");
+
+    await finalizeAndSubmit();
+  };
+}
+
+/** =========================
+ * 12) Submit：組 sessions row + flush queues + 完成頁
+ * ========================= */
+async function finalizeAndSubmit(){
+  const pid = localStorage.getItem(LS.PID);
+  const ui = localStorage.getItem(LS.UI);
+  const pv = localStorage.getItem(LS.PV);
+  const start_ts = localStorage.getItem(LS.START);
+  const end_ts = nowISO();
+  const total_duration_sec = Math.max(0, Math.round((Date.parse(end_ts) - Date.parse(start_ts))/1000));
+  const resume_count = parseInt(localStorage.getItem(LS.RESUME) || "1", 10);
+
+  // background + consent
+  const bg = JSON.parse(localStorage.getItem(LS.BG) || "{}");
+  const age_group = bg.age_group ?? null;
+  const sex = bg.sex ?? null;
+  const comprehension_score = bg.comprehension_score ?? null;
+  const trust_score = bg.trust_score ?? null;
+
+  // consent metrics
+  const consent_dwell_time_sec = calcConsentDwellSec();
+  const consent_scroll_pct = parseFloat(localStorage.getItem(LS.CONSENT_MAX_SCROLL)||"0");
+
+  // UX answers stored in answers map
+  const answers = getAnswers();
+
+  // Determine dropout info
+  const lastQ = FLAT[Math.min(getCurrentQIndex(), TOTAL_Q-1)];
+  const dropout_q_index = null; // completed => null
+  const dropout_category_id = null;
+
+  // Flush queued responses/events first
+  pushEvent("submit", { completed: 1 });
+  await flushQueues();
+
+  // Send final session row
+  const sessionRow = {
+    participant_id: pid,
+    start_ts,
+    end_ts,
+    total_duration_sec,
+    completed: 1,
+    dropout_q_index,
+    dropout_category_id,
+    resume_count,
+    ui_condition_id: ui,
+    factor_paging: ui.startsWith("TWOQ") ? "TWOQ" : "ONEQ",
+    factor_progress: ui.endsWith("ON") ? "ON" : "OFF",
+    privacy_notice_version: pv,
+
+    consent_given: 1,
+    consent_dwell_time_sec,
+    consent_scroll_pct,
+    comprehension_score,
+    trust_score,
+
+    sex,
+    age_group,
+    device_type: getDeviceType(),
+    screen_width: window.innerWidth,
+    screen_height: window.innerHeight,
+
+    ux1: answers["ux1"] ?? null,
+    ux2: answers["ux2"] ?? null,
+    ux3: answers["ux3"] ?? null,
+    ux4: answers["ux4"] ?? null,
+    ux5: answers["ux5"] ?? null,
+  };
+
+  const r = await postToGAS({ type:"session_final", participant_id: pid, session: sessionRow });
+  // 不管成功失敗，都讓使用者看到完成；失敗時保留資料可重送
+  if (r && r.ok){
+    // 清掉暫存（保留 pid / condition 可選；這裡清掉整份，避免重覆）
+    clearAllLocalProgressButIdentity();
+  }
+
+  setStep(STEPS.DONE);
+  render();
+}
+
+function clearAllLocalProgressButIdentity(){
+  const keep = [LS.PID, LS.UI, LS.PV]; // 你也可選擇不保留，視研究策略
+  const snapshot = {};
+  keep.forEach(k=> snapshot[k] = localStorage.getItem(k));
+  localStorage.clear();
+  keep.forEach(k=> {
+    if (snapshot[k] !== null) localStorage.setItem(k, snapshot[k]);
+  });
+}
+
+/** =========================
+ * 13) Done / Declined
+ * ========================= */
+function renderDone(){
+  bottomNav.style.display = "none";
+  const pid = localStorage.getItem(LS.PID);
+
+  app.innerHTML = `
+    <h2 class="center">完成！謝謝您</h2>
+    <p class="center muted">您的填答已送出。</p>
+    <div class="divider"></div>
+    <div class="noticeBox">
+      <div>（研究用）參與編號：</div>
+      <div class="mono">${pid}</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="restartBtn">重新開始（測試用）</button>
+  `;
+  document.getElementById("restartBtn").onclick = ()=>{
+    localStorage.removeItem(LS.STEP);
+    localStorage.removeItem(LS.CUR_INDEX);
+    localStorage.removeItem(LS.ANSWERS);
+    localStorage.removeItem(LS.VIEW_TS);
+    localStorage.removeItem(LS.CHANGES);
+    localStorage.removeItem(LS.EVENTQ);
+    localStorage.removeItem(LS_RESPQ);
+    render();
+  };
+}
+
+function renderDeclined(){
+  bottomNav.style.display = "none";
+  app.innerHTML = `
+    <h2>已結束</h2>
+    <p class="muted">您選擇不同意參與，因此不會收集後續資料。謝謝您。</p>
+    <button class="btn" id="homeBtn">回首頁</button>
+  `;
+  document.getElementById("homeBtn").onclick = ()=>{
+    setStep(STEPS.LANDING);
+    render();
+  };
+}
+
+/** =========================
+ * 14) 小工具
+ * ========================= */
+function showErr(id){
+  const el = document.getElementById(id);
+  if (el) el.style.display = "block";
+}
+function hideErr(id){
+  const el = document.getElementById(id);
+  if (el) el.style.display = "none";
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
+}
+
+/** =========================
+ * 15) 流失處理（使用者關掉/離開頁面）
+ *  - 我會在 beforeunload 嘗試送出一次 session_partial
+ * ========================= */
+window.addEventListener("beforeunload", ()=>{
+  // 記錄最後位置
+  const idx = getCurrentQIndex();
+  const q = FLAT[idx] || null;
+  if (q){
+    pushEvent("page_view", { page:"leaving", last_q_index:q.q_index });
+  }
+  // 嘗試 flush（不保證成功）
+  // 注意：beforeunload 中 fetch 常被瀏覽器阻擋，這裡只做最小動作：保留 localStorage
+});
+
+/** =========================
+ * 16) 啟動
+ * ========================= */
+(function boot(){
+  initIdentityAndConditions();
+  render();
+})();
+</script>
 </body>
 </html>
