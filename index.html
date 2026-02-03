@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>睡眠問卷（APS / PSAS）</title>
+<title>睡眠問卷（APS）</title>
 
 <style>
   body {
@@ -11,9 +11,12 @@
     margin: auto;
     line-height: 1.8;
   }
-  @media (max-width: 900px) { body { font-size: 21px; } }
-  @media (max-width: 600px) { body { font-size: 22px; } }
-
+  @media (max-width: 900px) {
+    body { font-size: 21px; }
+  }
+  @media (max-width: 600px) {
+    body { font-size: 22px; }
+  }
   .question { margin-bottom: 25px; }
   button {
     font-size: 18px;
@@ -52,31 +55,20 @@
 <hr>
 
 <h2>[1] 喚醒傾向量表（APS）</h2>
+
 <div id="aps-container"></div>
 
-<hr>
-
-<h2>[2] 睡前激發程度量表（PSAS）</h2>
-<div id="psas-container"></div>
-
-<br>
 <button onclick="submitForm()">送出</button>
 
 <script>
-/* ===============================
-   全域行為 log
-================================ */
+  // ===== 行為 log（Phase 1：全問卷層級）=====
 const surveyStartTime = Date.now();
 let ttsCount = 0;
 let ttsLog = [];
+// ===== 單題反應時間（第一次作答）=====
+const apsFirstResponseTime = {}; // { APS1: ms, APS2: ms, ... }
 
-/* 單題反應時間（第一次） */
-const apsFirstResponseTime = {};
-const psasFirstResponseTime = {};
 
-/* ===============================
-   APS 題目
-================================ */
 const apsQuestions = [
   "我是一個非常冷靜的人。",
   "我在煩躁不安後需要很長時間才能放鬆。",
@@ -92,104 +84,47 @@ const apsQuestions = [
   "我經常感到「緊張兮兮」或緊繃。"
 ];
 
-const apsOptions = ["幾乎從不","很少","偶爾","常常","幾乎總是"];
+const options = ["幾乎從不","很少","偶爾","常常","幾乎總是"];
 
-/* ===============================
-   PSAS 題目
-================================ */
-const psasQuestions = [
-  "感覺心臟快速、劇烈或不規則地跳動。",
-  "感覺身體緊張不安。",
-  "感覺喘不過氣或呼吸困難。",
-  "感覺肌肉緊繃。",
-  "感覺手、腳或身體冰冷。",
-  "感覺胃不適（翻攪、糾結、噁心、灼熱、反胃、脹氣等）。",
-  "感覺手掌心或身體其他部位出汗。",
-  "感覺口乾舌躁。",
-  "擔心無法入睡。",
-  "開始回憶或思考一天所發生事情。",
-  "憂鬱或焦慮的想法。",
-  "擔心睡眠以外的問題。",
-  "思想清楚、活躍。",
-  "無法停止思考。",
-  "思想持續盤旋在心裡。",
-  "被環境的聲音或噪音所困擾。"
-];
-
-const psasOptions = [
-  "完全沒有感覺",
-  "稍微感覺到",
-  "中等強度的感覺",
-  "強烈感覺",
-  "極端強烈的感覺"
-];
-
-/* ===============================
-   產生 APS
-================================ */
-const apsContainer = document.getElementById("aps-container");
+const container = document.getElementById("aps-container");
 
 apsQuestions.forEach((q, i) => {
-  apsContainer.innerHTML += `
-    <div class="question">
-      ${i+1}. ${q}
-      <button type="button" onclick="speak('${q}',1)">🔊</button>
-      <button type="button" onclick="speak('${q}',0.6)">🐢</button>
-      <div class="option">
-        ${apsOptions.map((opt,v)=>`
-          <label>
-            <input type="radio" name="APS${i+1}" value="${v+1}"
-                   onchange="recordAPS(${i+1})"> ${opt}
-          </label>`).join("")}
-      </div>
-    </div>`;
+  const div = document.createElement("div");
+  div.className = "question";
+  div.innerHTML = `
+    ${i+1}. ${q}
+    <button type="button" onclick="speak('${q}',1)">🔊 正常</button>
+    <button type="button" onclick="speak('${q}',0.6)">🐢 慢速</button>
+    <div class="option">
+      ${options.map((opt, v) => `
+        <label>
+          <input type="radio" name="APS${i+1}" value="${v+1}" onchange="recordAPSResponse(${i+1})"> ${opt}
+        </label>`).join("")}
+    </div>
+  `;
+  container.appendChild(div);
 });
 
-function recordAPS(n) {
-  const key = "APS" + n;
+function recordAPSResponse(itemNumber) {
+  const key = "APS" + itemNumber;
+
+  // 只記第一次反應
   if (!apsFirstResponseTime[key]) {
     apsFirstResponseTime[key] = Date.now() - surveyStartTime;
   }
 }
 
-/* ===============================
-   產生 PSAS
-================================ */
-const psasContainer = document.getElementById("psas-container");
 
-psasQuestions.forEach((q, i) => {
-  psasContainer.innerHTML += `
-    <div class="question">
-      ${i+1}. ${q}
-      <button type="button" onclick="speak('${q}',1)">🔊</button>
-      <button type="button" onclick="speak('${q}',0.6)">🐢</button>
-      <div class="option">
-        ${psasOptions.map((opt,v)=>`
-          <label>
-            <input type="radio" name="PSAS${i+1}" value="${v+1}"
-                   onchange="recordPSAS(${i+1})"> ${opt}
-          </label>`).join("")}
-      </div>
-    </div>`;
-});
-
-function recordPSAS(n) {
-  const key = "PSAS" + n;
-  if (!psasFirstResponseTime[key]) {
-    psasFirstResponseTime[key] = Date.now() - surveyStartTime;
-  }
-}
-
-/* ===============================
-   語音朗讀
-================================ */
+// 穩定版語音朗讀
 function speak(text, rate) {
   const synth = window.speechSynthesis;
   synth.cancel();
 
+  // ===== 行為記錄 =====
   ttsCount++;
   ttsLog.push({
-    item: text,
+    item: apsQuestions.indexOf(text) + 1,
+    text: text,
     rate: rate,
     time: new Date().toISOString()
   });
@@ -202,9 +137,8 @@ function speak(text, rate) {
   }, 120);
 }
 
-/* ===============================
-   送出
-================================ */
+
+// 送出表單
 function submitForm() {
   const name = document.getElementById("name").value.trim();
   const age = document.getElementById("age").value;
@@ -215,55 +149,50 @@ function submitForm() {
     return;
   }
 
-  for (let i=1;i<=12;i++) {
+  for (let i = 1; i <= 12; i++) {
     if (!document.querySelector(`input[name="APS${i}"]:checked`)) {
-      alert(`APS 第 ${i} 題未作答`);
-      return;
-    }
-  }
-
-  for (let i=1;i<=16;i++) {
-    if (!document.querySelector(`input[name="PSAS${i}"]:checked`)) {
-      alert(`PSAS 第 ${i} 題未作答`);
+      alert(`第 ${i} 題尚未作答`);
       return;
     }
   }
 
   const surveyEndTime = Date.now();
 
+  // ① 先建立 data 物件（只有靜態欄位）
   const data = {
-    name,
-    age,
+    name: name,
+    age: age,
     gender: gender.value,
+
     start_time: new Date(surveyStartTime).toISOString(),
     end_time: new Date(surveyEndTime).toISOString(),
-    total_time_sec: Math.round((surveyEndTime - surveyStartTime)/1000),
+    total_time_sec: Math.round((surveyEndTime - surveyStartTime) / 1000),
     tts_count: ttsCount,
     tts_detail: JSON.stringify(ttsLog)
   };
 
-  for (let i=1;i<=12;i++) {
-    data["APS"+i] = document.querySelector(`input[name="APS${i}"]:checked`).value;
-    data["APS"+i+"_time_sec"] =
-      Math.round((apsFirstResponseTime["APS"+i]||0)/1000);
+  // ② 加入 APS 作答值
+  for (let i = 1; i <= 12; i++) {
+    data["APS" + i] =
+      document.querySelector(`input[name="APS${i}"]:checked`).value;
   }
 
-  for (let i=1;i<=16;i++) {
-    data["PSAS"+i] = document.querySelector(`input[name="PSAS${i}"]:checked`).value;
-    data["PSAS"+i+"_time_sec"] =
-      Math.round((psasFirstResponseTime["PSAS"+i]||0)/1000);
+  // ③ ⭐ 加入「單題反應時間（秒）」
+  for (let i = 1; i <= 12; i++) {
+    const key = "APS" + i;
+    data[key + "_time_sec"] = apsFirstResponseTime[key]
+      ? Math.round(apsFirstResponseTime[key] / 1000)
+      : "";
   }
 
-fetch("https://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
-  method: "POST",
-  mode: "no-cors",
-  body: JSON.stringify(data)
-});
-
-alert("已送出，感謝填寫");
+  // ④ 送出
+  fetch("https://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
+    method: "POST",
+    body: JSON.stringify(data)
+  }).then(() => alert("已送出，感謝填寫"));
+}
 
 </script>
 
 </body>
 </html>
-
