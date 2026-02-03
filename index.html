@@ -254,10 +254,22 @@ function submitForm() {
       Math.round((psasFirstResponseTime["PSAS"+i]||0)/1000);
   }
 
-  fetch("【你的 Google Apps Script URL】", {
-    method: "POST",
-    body: JSON.stringify(data)
-  }).then(()=>alert("已送出，感謝填寫"));
+fetch("https://script.google.com/macros/s/你的ID/exechttps://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(data)
+})
+.then(res => res.text())
+.then(txt => {
+  console.log("GAS:", txt);
+  alert("已送出，感謝填寫");
+})
+.catch(err => {
+  console.error(err);
+  alert("送出失敗，請稍後再試");
+});
 }
 </script>
 
