@@ -65,6 +65,9 @@
 const surveyStartTime = Date.now();
 let ttsCount = 0;
 let ttsLog = [];
+// ===== 單題反應時間（第一次作答）=====
+const apsFirstResponseTime = {}; // { APS1: ms, APS2: ms, ... }
+
 
 const apsQuestions = [
   "我是一個非常冷靜的人。",
@@ -95,12 +98,22 @@ apsQuestions.forEach((q, i) => {
     <div class="option">
       ${options.map((opt, v) => `
         <label>
-          <input type="radio" name="APS${i+1}" value="${v+1}"> ${opt}
+          <input type="radio" name="APS${i+1}" value="${v+1}" onchange="recordAPSResponse(${i+1})"> ${opt}
         </label>`).join("")}
     </div>
   `;
   container.appendChild(div);
 });
+
+function recordAPSResponse(itemNumber) {
+  const key = "APS" + itemNumber;
+
+  // 只記第一次反應
+  if (!apsFirstResponseTime[key]) {
+    apsFirstResponseTime[key] = Date.now() - surveyStartTime;
+  }
+}
+
 
 // 穩定版語音朗讀
 function speak(text, rate) {
@@ -155,7 +168,15 @@ function submitForm() {
     end_time: new Date(surveyEndTime).toISOString(),
     total_time_sec: Math.round((surveyEndTime - surveyStartTime) / 1000),
     tts_count: ttsCount,
-   tts_detail: JSON.stringify(ttsLog)
+    tts_detail: JSON.stringify(ttsLog)
+
+    // ===== 單題反應時間（秒）=====
+    for (let i = 1; i <= 12; i++) {
+     const key = "APS" + i;
+     data[key + "_time_sec"] = apsFirstResponseTime[key]
+        ? Math.round(apsFirstResponseTime[key] / 1000)
+        : "";
+    }
   };
 
 
