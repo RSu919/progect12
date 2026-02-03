@@ -61,6 +61,11 @@
 <button onclick="submitForm()">送出</button>
 
 <script>
+  // ===== 行為 log（Phase 1：全問卷層級）=====
+const surveyStartTime = Date.now();
+let ttsCount = 0;
+let ttsLog = [];
+
 const apsQuestions = [
   "我是一個非常冷靜的人。",
   "我在煩躁不安後需要很長時間才能放鬆。",
@@ -101,6 +106,16 @@ apsQuestions.forEach((q, i) => {
 function speak(text, rate) {
   const synth = window.speechSynthesis;
   synth.cancel();
+
+  // ===== 行為記錄 =====
+  ttsCount++;
+  ttsLog.push({
+    item: apsQuestions.indexOf(text) + 1,
+    text: text,
+    rate: rate,
+    time: new Date().toISOString()
+  });
+
   setTimeout(() => {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "zh-TW";
@@ -108,6 +123,7 @@ function speak(text, rate) {
     synth.speak(u);
   }, 120);
 }
+
 
 // 送出表單
 function submitForm() {
@@ -127,7 +143,21 @@ function submitForm() {
     }
   }
 
-  const data = { name, age, gender: gender.value };
+  const surveyEndTime = Date.now();
+
+  const data = {
+    name: name,
+    age: age,
+    gender: gender.value,
+
+    // ===== 行為 log =====
+    start_time: new Date(surveyStartTime).toISOString(),
+    end_time: new Date(surveyEndTime).toISOString(),
+    total_time_sec: Math.round((surveyEndTime - surveyStartTime) / 1000),
+    tts_count: ttsCount,
+   tts_detail: JSON.stringify(ttsLog)
+  };
+
 
   for (let i=1;i<=12;i++) {
     data["APS"+i] = document.querySelector(`input[name="APS${i}"]:checked`).value;
