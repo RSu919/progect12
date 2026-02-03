@@ -126,13 +126,26 @@ apsQuestions.forEach((q, i) => {
 <script>
 // 語音朗讀
 function speak(text) {
+  if (!('speechSynthesis' in window)) {
+    alert("此瀏覽器不支援語音朗讀");
+    return;
+  }
+
   const rate = document.querySelector('input[name="rate"]:checked').value;
+  const synth = window.speechSynthesis;
+
+  // 先喚醒語音系統（關鍵）
+  const voices = synth.getVoices();
+
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'zh-TW';
   utterance.rate = parseFloat(rate);
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  utterance.pitch = 1.0;
+
+  synth.cancel();   // 避免疊音
+  synth.speak(utterance);
 }
+
 
 function submitForm() {
 
@@ -168,7 +181,7 @@ function submitForm() {
   }
 
   // 4️⃣ 送出
-  fetch("YOUR_WEB_APP_URL", {
+  fetch("https://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
     method: "POST",
     body: JSON.stringify(data)
   }).then(() => {
