@@ -254,17 +254,14 @@ function submitForm() {
       Math.round((psasFirstResponseTime["PSAS"+i]||0)/1000);
   }
 
-fetch("【新的 exec URL】", {
+fetch("https://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
   method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ test: "hello" })
-})
-.then(res => res.text())
-.then(txt => alert("GAS 回應：" + txt))
-.catch(err => alert("錯誤：" + err));
-}
+  mode: "no-cors",
+  body: JSON.stringify(data)
+});
+
+alert("已送出，感謝填寫");
+
 </script>
 
 </body>
