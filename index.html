@@ -254,22 +254,16 @@ function submitForm() {
       Math.round((psasFirstResponseTime["PSAS"+i]||0)/1000);
   }
 
-fetch("https://script.google.com/macros/s/AKfycbygGsMISd8Nn1kMTCeo-NMbDyucqDfT7u34XJS4gH0x28DAzJVpi4lw5f_rN3XM8tzuWQ/exec", {
+fetch("【新的 exec URL】", {
   method: "POST",
   headers: {
     "Content-Type": "application/json"
   },
-  body: JSON.stringify(data)
+  body: JSON.stringify({ test: "hello" })
 })
 .then(res => res.text())
-.then(txt => {
-  console.log("GAS:", txt);
-  alert("已送出，感謝填寫");
-})
-.catch(err => {
-  console.error(err);
-  alert("送出失敗，請稍後再試");
-});
+.then(txt => alert("GAS 回應：" + txt))
+.catch(err => alert("錯誤：" + err));
 }
 </script>
 
