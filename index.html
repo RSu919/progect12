@@ -49,19 +49,6 @@
 
 <h1>睡眠問卷</h1>
 
-<!-- 語速設定（全域） -->
-<div style="margin-bottom:30px;">
-  <strong>語音朗讀速度：</strong>
-  <label>
-    <input type="radio" name="rate" value="1" checked> 正常
-  </label>
-  <label>
-    <input type="radio" name="rate" value="0.6"> 慢速
-  </label>
-</div>
-
-<hr>
-
 <h2>[0] 基本資料</h2>
 
 <div class="question">
@@ -112,9 +99,8 @@ apsQuestions.forEach((q, i) => {
   document.write(`
     <div class="question">
       ${i+1}. ${q}
-      <button onclick="speak('題目', 1)">🔊 正常</button>
-      <button onclick="speak('題目', 0.6)">🐢 慢速</button>
-
+      <button type="button" onclick="speak('我是一個非常冷靜的人。', 1)">  🔊 正常</button>
+      <button type="button" onclick="speak('我是一個非常冷靜的人。', 0.6)">  🐢 慢速</button>
       <div class="option">
   `);
 
@@ -136,13 +122,26 @@ apsQuestions.forEach((q, i) => {
 <script>
 // 語音朗讀
 function speak(text, rate) {
+  if (!('speechSynthesis' in window)) {
+    alert("此瀏覽器不支援語音朗讀");
+    return;
+  }
+
   const synth = window.speechSynthesis;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'zh-TW';
-  utterance.rate = rate;
+
+  // 1️⃣ 強制停止所有正在排隊或播放的語音
   synth.cancel();
-  synth.speak(utterance);
+
+  // 2️⃣ 延遲一下再播（避免 Web Speech API 卡死）
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-TW';
+    utterance.rate = rate;   // 1 或 0.6
+    utterance.pitch = 1.0;
+    synth.speak(utterance);
+  }, 150); // 100–200ms 都可以，這裡取安全值
 }
+
 
 
 // 送出表單
