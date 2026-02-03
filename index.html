@@ -5,44 +5,29 @@
 <title>睡眠問卷（APS）</title>
 
 <style>
-  /* 預設：桌機 / 筆電 */
   body {
     font-size: 20px;
     max-width: 800px;
     margin: auto;
     line-height: 1.8;
   }
-
-  /* 平板 */
   @media (max-width: 900px) {
-    body {
-      font-size: 21px;
-    }
+    body { font-size: 21px; }
   }
-
-  /* 手機（高齡友善） */
   @media (max-width: 600px) {
-    body {
-      font-size: 22px;
-    }
+    body { font-size: 22px; }
   }
-
-  .question {
-    margin-bottom: 25px;
-  }
-
+  .question { margin-bottom: 25px; }
   button {
-    font-size: 20px;
-    padding: 6px 12px;
-    margin-left: 10px;
+    font-size: 18px;
+    padding: 4px 10px;
+    margin-left: 6px;
   }
-
   .option label {
     display: block;
     margin-left: 20px;
   }
 </style>
-
 </head>
 
 <body>
@@ -53,7 +38,7 @@
 
 <div class="question">
   姓名（必填）<br>
-  <input type="text" id="name" required>
+  <input type="text" id="name">
 </div>
 
 <div class="question">
@@ -64,12 +49,16 @@
 
 <div class="question">
   年齡（必填）<br>
-  <input type="number" id="age" required>
+  <input type="number" id="age">
 </div>
 
 <hr>
 
 <h2>[1] 喚醒傾向量表（APS）</h2>
+
+<div id="aps-container"></div>
+
+<button onclick="submitForm()">送出</button>
 
 <script>
 const apsQuestions = [
@@ -87,121 +76,68 @@ const apsQuestions = [
   "我經常感到「緊張兮兮」或緊繃。"
 ];
 
-const options = [
-  "幾乎從不",
-  "很少",
-  "偶爾",
-  "常常",
-  "幾乎總是"
-];
+const options = ["幾乎從不","很少","偶爾","常常","幾乎總是"];
+
+const container = document.getElementById("aps-container");
 
 apsQuestions.forEach((q, i) => {
-  document.write(`
-    <div class="question">
-      ${i+1}. ${q}
-      <button type="button" onclick="speak('我是一個非常冷靜的人。', 1)">  🔊 正常</button>
-      <button type="button" onclick="speak('我是一個非常冷靜的人。', 0.6)">  🐢 慢速</button>
-      <div class="option">
-  `);
-
-  options.forEach((opt, v) => {
-    document.write(`
-      <label>
-        <input type="radio" name="APS${i+1}" value="${v+1}">
-        ${opt}
-      </label>
-    `);
-  });
-
-  document.write("</div></div>");
+  const div = document.createElement("div");
+  div.className = "question";
+  div.innerHTML = `
+    ${i+1}. ${q}
+    <button type="button" onclick="speak('${q}',1)">🔊 正常</button>
+    <button type="button" onclick="speak('${q}',0.6)">🐢 慢速</button>
+    <div class="option">
+      ${options.map((opt, v) => `
+        <label>
+          <input type="radio" name="APS${i+1}" value="${v+1}"> ${opt}
+        </label>`).join("")}
+    </div>
+  `;
+  container.appendChild(div);
 });
-</script>
 
-<button onclick="submitForm()">送出</button>
-
-<script>
-// 語音朗讀
+// 穩定版語音朗讀
 function speak(text, rate) {
-  if (!('speechSynthesis' in window)) {
-    alert("此瀏覽器不支援語音朗讀");
-    return;
-  }
-
   const synth = window.speechSynthesis;
-
-  // 1️⃣ 強制停止所有正在排隊或播放的語音
   synth.cancel();
-
-  // 2️⃣ 延遲一下再播（避免 Web Speech API 卡死）
   setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-TW';
-    utterance.rate = rate;   // 1 或 0.6
-    utterance.pitch = 1.0;
-    synth.speak(utterance);
-  }, 150); // 100–200ms 都可以，這裡取安全值
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-TW";
+    u.rate = rate;
+    synth.speak(u);
+  }, 120);
 }
-
-
 
 // 送出表單
 function submitForm() {
+  const name = document.getElementById("name").value.trim();
+  const age = document.getElementById("age").value;
+  const gender = document.querySelector('input[name="gender"]:checked');
 
-  // 1️⃣ 基本資料檢查
-  const nameEl = document.getElementById("name");
-  const genderEl = document.querySelector('input[name="gender"]:checked');
-  const ageEl = document.getElementById("age");
-
-  if (!nameEl || !ageEl) {
-    alert("系統錯誤：找不到基本資料欄位");
+  if (!name || !age || !gender) {
+    alert("請完整填寫基本資料");
     return;
   }
 
-  const name = nameEl.value.trim();
-  const age = ageEl.value;
-
-  if (!name || !genderEl || !age) {
-    alert("請完整填寫基本資料（姓名、性別、年齡）");
-    return;
-  }
-
-  // 2️⃣ 語速（給預設值，避免 null）
-  const rateEl = document.querySelector('input[name="rate"]:checked');
-  const speechRate = rateEl ? rateEl.value : "1";
-
-  // 3️⃣ APS 題目檢查
-  for (let i = 1; i <= 12; i++) {
+  for (let i=1;i<=12;i++) {
     if (!document.querySelector(`input[name="APS${i}"]:checked`)) {
-      alert(`第 ${i} 題尚未作答，請完成所有題目`);
+      alert(`第 ${i} 題尚未作答`);
       return;
     }
   }
 
-  // 4️⃣ 資料整理
-  const data = {
-    name: name,
-    gender: genderEl.value,
-    age: age,
-    speech_rate: speechRate
-  };
+  const data = { name, age, gender: gender.value };
 
-  for (let i = 1; i <= 12; i++) {
-    data["APS" + i] =
-      document.querySelector(`input[name="APS${i}"]:checked`).value;
+  for (let i=1;i<=12;i++) {
+    data["APS"+i] = document.querySelector(`input[name="APS${i}"]:checked`).value;
   }
 
-  // 5️⃣ 送出（⚠️ 確保這是真實 URL）
   fetch("https://script.google.com/macros/s/AKfycby4crki8fOXzSNA-CmzDqKC-VBPIq59bn_C96HHxjGc4DAqTPHRgnPEp7AMuNem-6380g/exec", {
     method: "POST",
     body: JSON.stringify(data)
-  }).then(() => {
-    alert("已送出，感謝您的填寫！");
-  }).catch(err => {
-    alert("送出失敗，請稍後再試");
-    console.error(err);
-  });
+  }).then(()=>alert("已送出，感謝填寫"));
 }
-
 </script>
 
 </body>
